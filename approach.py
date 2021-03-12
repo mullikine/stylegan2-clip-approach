@@ -1,3 +1,6 @@
+#!/usr/bin/env python3.6
+# -*- coding: utf-8 -*-
+
 import copy
 import os
 import simplejson as json
@@ -11,7 +14,7 @@ import torch.nn.functional as F
 import dnnlib
 import legacy
 import clip
-import hashlib 
+import hashlib
 
 
 def approach(
@@ -19,16 +22,16 @@ def approach(
     *,
     num_steps                  = 100,
     w_avg_samples              = 10000,
-    initial_learning_rate      = 0.02,  
-    initial_noise_factor       = 0.02,  
-    noise_floor                = 0.02, 
+    initial_learning_rate      = 0.02,
+    initial_noise_factor       = 0.02,
+    noise_floor                = 0.02,
     psi                        = 0.8,
     noise_ramp_length          = 1.0, # was 0.75
     regularize_noise_weight    = 10000, # was 1e5
-    seed                       = 69097, 
-    noise_opt                  = True, 
+    seed                       = 69097,
+    noise_opt                  = True,
     ws                         = None,
-    text                       = 'a computer generated image', 
+    text                       = 'a computer generated image',
     device: torch.device
 ):
 
@@ -124,12 +127,12 @@ def approach(
 
         #save1
         '''
-        synth_images_save = (synth_images + 1) * (255/2)        
+        synth_images_save = (synth_images + 1) * (255/2)
         synth_images_save = synth_images_save.permute(0, 2, 3, 1).clamp(0, 255).to(torch.uint8)[0].cpu().numpy()
         PIL.Image.fromarray(synth_images_save, 'RGB').save('project/test1.png')
         '''
 
-        nom = torchvision.transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))        
+        nom = torchvision.transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
         into = synth_images
         into = nom(into) # normalize copied from CLIP preprocess. doesn't seem to affect tho
 
@@ -160,7 +163,7 @@ def approach(
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
-        
+
         print(f'step {step+1:>4d}/{num_steps}:  loss {float(loss):<5.2f} ','lr', lr, f'noise scale: {float(w_noise_scale):<5.6f}',f'away: {float(away / (-30)):<5.6f}')
 
         w_out[step] = w_opt.detach()[0]
@@ -205,14 +208,14 @@ def run_approach(
     psi: float,
     noise_opt: bool
 ):
-    """Descend on StyleGAN2 w vector value using CLIP, tuning an image with given text prompt. 
+    """Descend on StyleGAN2 w vector value using CLIP, tuning an image with given text prompt.
 
     Example:
 
     \b
-    python3 approach.py --network network-snapshot-ffhq.pkl --outdir project --num-steps 100  \\ 
+    python3 approach.py --network network-snapshot-ffhq.pkl --outdir project --num-steps 100  \\
     --text 'an image of a girl with a face resembling Paul Krugman' --psi 0.8 --seed 12345
-    
+
     """
 
     #seed = 1
@@ -233,7 +236,7 @@ def run_approach(
     if w is not None:
         print ('loading w from file', w, 'ignoring seed and psi')
         ws = np.load(w)['w']
-        
+
     # take off
     print('Loading networks from "%s"...' % network_pkl)
     device = torch.device('cuda')
@@ -278,7 +281,7 @@ def run_approach(
     # save the result and the final w
     print ('Saving finals')
     projected_w = projected_w_steps[-1]
-    synth_image = G.synthesis(projected_w.unsqueeze(0), noise_mode='const') 
+    synth_image = G.synthesis(projected_w.unsqueeze(0), noise_mode='const')
     synth_image = (synth_image + 1) * (255/2)
     synth_image = synth_image.permute(0, 2, 3, 1).clamp(0, 255).to(torch.uint8)[0].cpu().numpy()
     PIL.Image.fromarray(synth_image, 'RGB').save(f'{outdir}/out-{hashname}.png')
@@ -290,4 +293,4 @@ def run_approach(
         json.dump(params, outfile)
 
 if __name__ == "__main__":
-    run_approach() 
+    run_approach()
